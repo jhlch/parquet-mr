@@ -21,19 +21,26 @@ package org.apache.parquet.hadoop.codec;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.hadoop.conf.Configurable;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.Decompressor;
 import org.xerial.snappy.Snappy;
 
 import org.apache.parquet.Preconditions;
 
-public class SnappyDecompressor implements Decompressor {
+public class SnappyDecompressor implements Configurable, Decompressor {
+  private Configuration conf;
+  // Hadoop config for how big to make intermediate buffers.
+  private final String DIRECT_BUFFER_CONFIG = "io.file.buffer.isdirect";
+
   // Buffer for uncompressed output. This buffer grows as necessary.
-  private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
+  private ByteBuffer outputBuffer = allocateBuffer(0);
 
   // Buffer for compressed input. This buffer grows as necessary.
   private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(0);
 
   private boolean finished;
+
   
   /**
    * Fills specified buffer with uncompressed data. Returns actual number
@@ -61,7 +68,7 @@ public class SnappyDecompressor implements Decompressor {
       // There is compressed input, decompress it now.
       int decompressedSize = Snappy.uncompressedLength(inputBuffer);
       if (decompressedSize > outputBuffer.capacity()) {
-        outputBuffer = ByteBuffer.allocateDirect(decompressedSize);
+        outputBuffer = allocateBuffer(decompressedSize);
       }
 
       // Reset the previous outputBuffer (i.e. set position to 0)
@@ -99,7 +106,7 @@ public class SnappyDecompressor implements Decompressor {
     SnappyUtil.validateBuffer(buffer, off, len);
 
     if (inputBuffer.capacity() - inputBuffer.position() < len) {
-      ByteBuffer newBuffer = ByteBuffer.allocateDirect(inputBuffer.position() + len);
+      ByteBuffer newBuffer = allocateBuffer(inputBuffer.position() + len);
       inputBuffer.rewind();
       newBuffer.put(inputBuffer);
       inputBuffer = newBuffer;      
@@ -146,6 +153,25 @@ public class SnappyDecompressor implements Decompressor {
   @Override
   public void setDictionary(byte[] b, int off, int len) {
     // No-op		
+  }
+
+  private ByteBuffer allocateBuffer(int capacity) {
+    if (conf.getBoolean(DIRECT_BUFFER_CONFIG, true)) {
+      return ByteBuffer.allocateDirect(capacity);
+    } else {
+      return ByteBuffer.allocate(capacity);
+    }
+  }
+
+
+  @Override
+  public void setConf(Configuration conf) {
+    this.conf = conf;
+  }
+
+  @Override
+  public Configuration getConf() {
+    return conf;
   }
 
 } //class SnappyDecompressor
