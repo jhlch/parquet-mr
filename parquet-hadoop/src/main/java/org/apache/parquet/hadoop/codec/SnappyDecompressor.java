@@ -18,29 +18,41 @@
  */
 package org.apache.parquet.hadoop.codec;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.Decompressor;
+import org.apache.parquet.Preconditions;
 import org.xerial.snappy.Snappy;
 
-import org.apache.parquet.Preconditions;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class SnappyDecompressor implements Configurable, Decompressor {
   private Configuration conf;
-  // Hadoop config for how big to make intermediate buffers.
-  private final String DIRECT_BUFFER_CONFIG = "io.file.buffer.isdirect";
+  // config specifying whether to use direct or on heap memory
+  private final String DIRECT_BUFFER_CONFIG = "io.file.parquet.snappy.buffer.isdirect";
+
+  private boolean useDirect;
 
   // Buffer for uncompressed output. This buffer grows as necessary.
-  private ByteBuffer outputBuffer = allocateBuffer(0);
+  protected ByteBuffer outputBuffer = allocateBuffer(0);
 
   // Buffer for compressed input. This buffer grows as necessary.
-  private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(0);
+  protected ByteBuffer inputBuffer = allocateBuffer(0);
 
   private boolean finished;
 
+  public SnappyDecompressor() {
+    useDirect = true;
+  }
+
+  /**
+   *
+   */
+  protected SnappyDecompressor(Configuration conf) {
+    this.conf = conf;
+    useDirect = conf.getBoolean(DIRECT_BUFFER_CONFIG, true);
+  }
   
   /**
    * Fills specified buffer with uncompressed data. Returns actual number
@@ -155,8 +167,8 @@ public class SnappyDecompressor implements Configurable, Decompressor {
     // No-op		
   }
 
-  private ByteBuffer allocateBuffer(int capacity) {
-    if (conf.getBoolean(DIRECT_BUFFER_CONFIG, true)) {
+  protected ByteBuffer allocateBuffer(int capacity) {
+    if (useDirect) {
       return ByteBuffer.allocateDirect(capacity);
     } else {
       return ByteBuffer.allocate(capacity);

@@ -18,16 +18,20 @@
  */
 package org.apache.parquet.hadoop.codec;
 
-import org.junit.Assert;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapreduce.*;
-import org.junit.Test;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.JobID;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.TaskAttemptID;
+import org.apache.hadoop.mapreduce.TaskID;
 import org.apache.parquet.hadoop.ParquetOutputFormat;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.util.ContextUtil;
+import org.junit.Assert;
+import org.junit.Test;
 
 import java.io.IOException;
-import org.apache.parquet.hadoop.util.ContextUtil;
 
 public class CodecConfigTest {
   @Test
@@ -71,6 +75,16 @@ public class CodecConfigTest {
     jobConf.setBoolean("mapred.output.compress", true);
     jobConf.set("mapred.output.compression.codec", codecClassStr);
     Assert.assertEquals(CodecConfig.from(jobConf).getCodec(), expectedCodec);
+  }
+
+  @Test
+  public void testConfiguringBufferMemory() throws IOException {
+    Job job = new Job();
+    Configuration conf = job.getConfiguration();
+    conf.setBoolean("io.file.parquet.snappy.buffer.isdirect", false);
+    SnappyDecompressor onHeapDecompressor = new SnappyDecompressor(conf);
+    Assert.assertFalse(onHeapDecompressor.outputBuffer.isDirect());
+    Assert.assertFalse(onHeapDecompressor.outputBuffer.isDirect());
   }
 
 

@@ -18,10 +18,6 @@
  */
 package org.apache.parquet.hadoop.codec;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
@@ -29,6 +25,10 @@ import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 /**
  * Snappy compression codec for Parquet.  We do not use the default hadoop
@@ -59,7 +59,7 @@ public class SnappyCodec implements Configurable, CompressionCodec {
 
   @Override
   public Decompressor createDecompressor() {
-    return new SnappyDecompressor();
+    return new SnappyDecompressor(conf);
   }
 
   @Override
